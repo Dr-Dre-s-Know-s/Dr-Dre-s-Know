@@ -57,7 +57,7 @@ function UserHome() {
       <p>Email : {Data.email}</p>
       <button
         className="bg-cyan-300 text-cyan-800"
-        onClick={() => navigate("/login")}
+        onClick={logout}
       >
         Logout
       </button>

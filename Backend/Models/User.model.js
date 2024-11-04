@@ -23,6 +23,7 @@ const UserSchema = new Schema({
   },
   bio: { type: String, default: "" },
   profileImage: { type: String }, // URL to profile image
+  rapPortfolio: [{ type: mongoose.Schema.Types.ObjectId, ref: "Battle" }],
 });
 
 //Middleware

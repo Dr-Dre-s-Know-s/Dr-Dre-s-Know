@@ -8,6 +8,7 @@ const cors = require("cors");
 const { verifyAccessToken } = require("./helpers/jwthelper");
 
 const AuthRoute = require("./routes/auth.route");
+const UserRoute = require("./routes/user.route");
 
 const app = express();
 app.use(
@@ -28,6 +29,7 @@ app.get("/", verifyAccessToken, async (req, res, next) => {
 
 //To access all the auth route
 app.use("/auth", AuthRoute);
+app.use("/user", UserRoute);
 
 //Error handling
 app.use(async (req, res, next) => {
