@@ -6,18 +6,19 @@ const Battle = require("../Models/Battle.model");
 const { verifyAccessToken } = require("../helpers/jwthelper");
 const mongoose = require("mongoose");
 const { route } = require("./auth.route");
+const Profile = require("../Models/Profile.model");
 
-router.put("/create-battle/:artistId", async (req, res) => {
+router.put("/create-battle/:artistId", async (req, res, next) => {
   try {
     const { artistId } = req.params;
 
     const { title, description, verseText } = req.body;
 
-    const artist = await User.findById(artistId).populate("rapPortfolio");
+    const artist = await Profile.findOne({ userId: artistId }).populate(
+      "rapPortfolio"
+    );
     if (!artist) {
-      return res.status(404).json({
-        error: "Artist Not Found",
-      });
+      next(createError.NotFound(`Artist does'nt exist`));
     }
     // Create a new battle document
 
@@ -39,12 +40,12 @@ router.put("/create-battle/:artistId", async (req, res) => {
       .status(201)
       .json({ message: "New battle created successfully", newBattle });
   } catch (err) {
-    console.error("Error creating battle:", err);
-    res.status(500).json({ error: "Failed to create battle" });
+    next(createError.InternalServerError("Failed to create battle"));
   }
 });
 
-router.post("/battle/:battleId/challenge", async (req, res) => {
+//when opponent challege a battle for one-one
+router.post("/challenge-battle/:battleId", async (req, res, next) => {
   try {
     const { battleId } = req.params;
     const { opponentId, verseText } = req.body;
@@ -54,22 +55,18 @@ router.post("/battle/:battleId/challenge", async (req, res) => {
       !mongoose.Types.ObjectId.isValid(battleId) ||
       !mongoose.Types.ObjectId.isValid(opponentId)
     ) {
-      return res
-        .status(400)
-        .json({ error: "Invalid battleId or opponentId format" });
+      next(createError.NotFound("Invalid battleid or opponentId format"));
     }
 
     // Find the battle
     const battle = await Battle.findById(battleId);
     if (!battle) {
-      return res.status(404).json({ error: "Battle not found" });
+      next(createError.NotFound("Battle not found"));
     }
 
     // Check if the opponent has already challenged this battle
     if (battle.verses.some((verse) => verse.userId.toString() === opponentId)) {
-      return res
-        .status(400)
-        .json({ error: "User has already challenged this battle" });
+      next(createError.Conflict("User has already challenged this battle"));
     }
 
     // Add the opponent's verse to the battle
@@ -82,14 +79,14 @@ router.post("/battle/:battleId/challenge", async (req, res) => {
     await battle.save();
 
     // Update the opponent's rapPortfolio in the User schema
-    const opponent = await User.findById(opponentId);
+    const opponent = await Profile.findOne({ userId: opponentId });
     if (opponent) {
       opponent.rapPortfolio.push(battle);
       await opponent.save();
     }
 
     // Optionally, add the battle to the artist's rapPortfolio if not already present
-    const artist = await User.findById(battle.artistId);
+    const artist = await Profile.findOne({ userId: battle.artistId });
     if (
       artist &&
       !artist.rapPortfolio.some((id) => id.toString() === battle._id.toString())
@@ -100,12 +97,11 @@ router.post("/battle/:battleId/challenge", async (req, res) => {
 
     res.status(200).json({ message: "Challenge added successfully", battle });
   } catch (error) {
-    console.error("Error adding opponent to battle:", error);
-    res.status(500).json({ error: "Failed to add opponent to battle" });
+    next(createError.InternalServerError("Failed to add opponent to battle"));
   }
 });
 
-router.post("/battle/:battleId/vote", async (req, res) => {
+router.post("/battle-vote/:battleId", async (req, res, next) => {
   try {
     const { battleId } = req.params;
     const { voterId, voteFor } = req.body; // `voteFor` should be either `artistId` or `opponentId`
@@ -116,21 +112,23 @@ router.post("/battle/:battleId/vote", async (req, res) => {
       !mongoose.Types.ObjectId.isValid(voterId) ||
       !mongoose.Types.ObjectId.isValid(voteFor)
     ) {
-      return res.status(400).json({ error: "Invalid ID format" });
+      next(createError.BadRequest("Invalid Id format"));
     }
 
     // Find the battle
     const battle = await Battle.findById(battleId);
 
     if (!battle) {
-      return res.status(404).json({ error: "Battle not found" });
+      next(createError.NotFound("Battle not found"));
     }
 
     // Check if the voter has already voted
-    if (battle.votes.some((vote) => vote.voterId === voterId)) {
-      return res
-        .status(400)
-        .json({ error: "User has already voted in this battle" });
+    if (
+      battle.votes.some(
+        (vote) => vote.voterId.toString() === voterId.toString()
+      )
+    ) {
+      next(createError.BadRequest("User had already voted in this battle"));
     }
 
     // Add the vote to the battle
@@ -147,7 +145,7 @@ router.post("/battle/:battleId/vote", async (req, res) => {
     } else if (voteFor === opponentId) {
       battle.voteCounts.opponent += 1;
     } else {
-      return res.status(400).json({ error: "Invalid voteFor ID" });
+      next(createError.BadRequest("Invalid voteFor Id"));
     }
 
     // Save the updated battle document
@@ -155,8 +153,7 @@ router.post("/battle/:battleId/vote", async (req, res) => {
 
     res.status(200).json({ message: "Vote added successfully", battle });
   } catch (error) {
-    console.error("Error casting vote:", error);
-    res.status(500).json({ error: "Failed to cast vote" });
+    next(createError.InternalServerError("Failed to cast vote"));
   }
 });
 

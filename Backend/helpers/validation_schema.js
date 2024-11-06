@@ -4,7 +4,7 @@ const authSchema = joi.object({
   username: joi.string().lowercase(),
   email: joi.string().email().lowercase().required(),
   password: joi.string().min(3).required(),
-  bi0: joi.string(),
+  bio: joi.string(),
   createdBattles: joi.array(),
   profileImage: joi.string(),
 });

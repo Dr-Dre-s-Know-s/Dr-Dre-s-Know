@@ -23,10 +23,7 @@ const Login = () => {
     try {
       const response = await axios.post(
         "http://localhost:3000/auth/login",
-        formData,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        formData
       );
 
       if (response.data.accessToken) {
@@ -35,7 +32,11 @@ const Login = () => {
       }
       sessionStorage.setItem("accessToken", response.data.accessToken);
     } catch (error) {
-      console.error("Error:", error);
+      if (error.response && error.response.data) {
+        alert(`Error: ${error.response.data.error.message}`);
+      } else {
+        alert("Error: Something went wrong");
+      }
     }
   };
 

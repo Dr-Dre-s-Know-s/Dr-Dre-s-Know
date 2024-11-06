@@ -36,7 +36,11 @@ const Signup = () => {
           navigate("/login");
         });
     } catch (error) {
-      console.error("Error:", error);
+      if (error.response && error.response.data) {
+        alert(`Error: ${error.response.data.error.message}`);
+      } else {
+        alert("Error: Something went wrong");
+      }
     }
   };
 
